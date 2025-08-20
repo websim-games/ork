@@ -4,12 +4,13 @@ import { getOrkMaxHealth } from './utils/monsterUtils.js';
 import { formatNumber } from './utils/formatUtils.js';
 import { GameState } from './GameState.js';
 import { checkUnlockConditions } from './utils/unlockUtils.js';
+import { isBossMonster, getBossHealth, getBossGold, getKillCountForMonster } from './utils/bossUtils.js';
+import { StatsManager } from './ui/StatsManager.js';
 
 class Game {
     constructor() {
         this.room = new WebsimSocket();
-        this.initialized = false;
-
+        
         // Initialize data structure 
         this.data = {
             gameStateId: null,
@@ -20,6 +21,8 @@ class Game {
             totalDamageDealt: 0,
             orksKilled: 0,
             totalGoldEarned: 0,
+            bossesKilled: 0,
+            totalGoldSpent: 0,
             currentTheme: 'dark', // Default theme
             isResetting: false, // Add this new property
             abilities: {
@@ -36,20 +39,50 @@ class Game {
                     level: 0
                 }
             },
-            upgradeCounts: {} // Add upgrade counts
+            upgradeCounts: {}, // Add upgrade counts
+            currentBoss: null
         };
 
-        // Initialize UI Manager
-        // Pass the game instance and config to the UIManager
+        // Initialize UI Manager and Stats Manager
         this.uiManager = new UIManager(this, config);
-
-        // Load game state into this.data
-        this.gameState = new GameState(this.room, this.data);  
-        this.gameState.loadGameState(this.uiManager); 
-
-        this.initialized = true;
-        this.uiManager.setTheme(this.data.currentTheme); 
-        this.uiManager.updateUI(); 
+        this.statsManager = new StatsManager(this.uiManager);
+        
+        // After UIManager initialization and before loading game state
+        this.initialized = false;
+        
+        // Load game state
+        this.gameState = new GameState(this.room, this.data);
+        this.gameState.loadGameState(this.uiManager).then(() => {
+            this.initialized = true;
+            this.uiManager.setTheme(this.data.currentTheme);
+            this.uiManager.updateUI();
+            // Update coin display after game state loads
+            if (this.uiManager.coinManager) {
+                this.uiManager.coinManager.updateGoldAmount(this.data.gold);
+            }
+        });
+        
+        this.checkUnlockConditions = () => {
+            const shopBtn = document.querySelector('[data-button="shop"]');
+            const statsBtn = document.querySelector('[data-button="stats"]');
+            
+            // Handle shop button unlock
+            if (shopBtn) {
+                const shopUnlocked = this.data.orksKilled >= config.unlocks.shop.requiredKills;
+                shopBtn.classList.toggle('unlocked', shopUnlocked);
+                shopBtn.disabled = !shopUnlocked;
+            }
+            
+            // Handle stats button unlock
+            if (statsBtn) {
+                const statsUnlocked = this.data.orksKilled >= config.unlocks.stats.requiredKills;
+                statsBtn.classList.toggle('unlocked', statsUnlocked);
+                statsBtn.disabled = !statsUnlocked;
+            }
+            
+            // Call the existing unlock conditions checker
+            checkUnlockConditions(this.data);
+        };
     }
 
     // Helper function to get the current state as a plain object 
@@ -123,7 +156,12 @@ class Game {
 
         // Trigger visual feedback on the image directly, only if ork isn't defeated
         if (!this.uiManager.ui.orkImage.classList.contains('defeated')) {
-            this.uiManager.ui.orkImage.style.transform = 'scale(0.9)';
+            if (this.data.currentBoss) {
+                // Add special boss hit effect if desired
+                this.uiManager.ui.orkImage.style.transform = 'scale(0.95)'; // Bosses resist more
+            } else {
+                this.uiManager.ui.orkImage.style.transform = 'scale(0.9)';
+            }
             setTimeout(() => {
                 if (!this.uiManager.ui.orkImage.classList.contains('defeated')) {
                     this.uiManager.ui.orkImage.style.transform = 'scale(1)';
@@ -155,27 +193,57 @@ class Game {
         // Wait for shrink animation to complete
         await new Promise(resolve => setTimeout(resolve, 320));
 
-        // Calculate gold earned based on monster level
+        // Calculate gold earned based on monster level and boss status
         let goldEarned = config.monsters.ork.baseGold + 
             (config.monsters.ork.upgrade.goldIncreasePerLevel * this.data.monsters.ork.level);
+            
+        if (this.data.currentBoss) {
+            goldEarned = getBossGold(goldEarned);
+            this.data.bossesKilled++; // Increment boss kills
+            this.data.currentBoss = null; // Reset boss status
+        }
             
         if (this.data.activeBoosts.has('gold-rush')) {
             goldEarned *= config.boosts['gold-rush'].multiplier;
         }
 
+        // Get ork position before defeat animation
+        const orkRect = this.uiManager.ui.orkImage.getBoundingClientRect();
+        const orkCenterX = orkRect.left + (orkRect.width / 2);
+        const orkCenterY = orkRect.top + (orkRect.height / 2);
+
+        // Add coin animation before updating gold
+        if (this.uiManager.coinManager) {
+            this.uiManager.coinManager.createCoinAnimation(orkCenterX, orkCenterY, goldEarned);
+        }
+
         this.data.gold += goldEarned;
         this.data.totalGoldEarned += goldEarned;
         
-        // Reset health using the helper function
-        this.data.orkHealth = getOrkMaxHealth(this.data.monsters.ork.level, config);
+        // Check if next monster should be a boss
+        const nextIsBoss = isBossMonster(this.data.orksKilled);
+    
+        // Reset health using the helper function, applying boss multiplier if needed
+        let newHealth = getOrkMaxHealth(this.data.monsters.ork.level, config);
+        if (nextIsBoss) {
+            newHealth = getBossHealth(newHealth);
+            this.data.currentBoss = 'ork';
+        }
+    
+        this.data.orkHealth = newHealth;
 
         // Reset image visual state
         this.uiManager.ui.orkImage.classList.remove('defeated');
+        if (nextIsBoss) {
+            this.uiManager.ui.orkImage.classList.add('boss');
+        } else {
+            this.uiManager.ui.orkImage.classList.remove('boss');
+        }
 
         this.data.isResetting = false;
 
-        checkUnlockConditions(this.data); // Check after ork level changes
-
+        this.checkUnlockConditions();
+        this.statsManager.updateStats(); // Make sure stats are updated when an ork is defeated
         this.uiManager.updateUI();
         await this.saveGameState();
     }
@@ -186,66 +254,68 @@ class Game {
         let purchased = false;
         let cost = 0;
 
+        const trackPurchase = (purchaseCost) => {
+            this.data.gold -= purchaseCost;
+            this.data.totalGoldSpent += purchaseCost;
+            return true;
+        };
+
         if (itemType === 'ork-upgrade') {
             const nextLevel = this.data.monsters.ork.level + 1;
             cost = config.monsters.ork.upgrade.costPerLevel * nextLevel;
             
             if (this.data.gold >= cost) {
-                this.data.gold -= cost;
+                purchased = trackPurchase(cost);
                 this.data.monsters.ork.level++;
-                // Update current ork's health to new max using helper function
                 this.data.orkHealth = getOrkMaxHealth(this.data.monsters.ork.level, config);
-                checkUnlockConditions(this.data); // Check after ork level changes
-                purchased = true;
+                this.checkUnlockConditions();
             }
         } else if (config.upgrades[itemType]) {
             const upgrade = config.upgrades[itemType];
-            
-            // Calculate scaled cost based on number of purchases
             const purchaseCount = this.data.upgradeCounts[itemType] || 0;
             cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, purchaseCount));
             
             if (this.data.gold >= cost) {
-                this.data.gold -= cost;
+                purchased = trackPurchase(cost);
                 this.data.damage += upgrade.damage;
                 this.data.upgradeCounts[itemType] = (this.data.upgradeCounts[itemType] || 0) + 1;
-                purchased = true;
             }
         } else if (config.boosts[itemType]) {
             const boost = config.boosts[itemType];
             cost = boost.cost;
             if (this.data.gold >= cost && !this.data.activeBoosts.has(itemType)) {
-                this.data.gold -= cost;
+                purchased = trackPurchase(cost);
                 this.activateBoost(itemType, boost.duration, true);
-                purchased = true;
             }
         } else if (itemType === 'super-hit' || itemType.startsWith('super-hit-')) {
             if (itemType === 'super-hit') {
                 cost = config.abilities['super-hit'].initialCost;
                 if (this.data.gold >= cost && !this.data.abilities['super-hit'].owned) {
-                    this.data.gold -= cost;
+                    purchased = trackPurchase(cost);
                     this.data.abilities['super-hit'].owned = true;
-                    purchased = true;
                 }
             } else if (itemType === 'super-hit-chance' && this.data.abilities['super-hit'].owned) {
+                const maxLevel = config.abilities['super-hit'].chanceUpgrade.maxLevel;
+                if (this.data.abilities['super-hit'].chanceLevel >= maxLevel) {
+                    return;
+                }
                 cost = config.abilities['super-hit'].chanceUpgrade.costPerLevel * (this.data.abilities['super-hit'].chanceLevel + 1);
                 if (this.data.gold >= cost) {
-                    this.data.gold -= cost;
+                    purchased = trackPurchase(cost);
                     this.data.abilities['super-hit'].chanceLevel++;
-                    purchased = true;
                 }
             } else if (itemType === 'super-hit-power' && this.data.abilities['super-hit'].owned) {
                 cost = config.abilities['super-hit'].powerUpgrade.costPerLevel * (this.data.abilities['super-hit'].powerLevel + 1);
                 if (this.data.gold >= cost) {
-                    this.data.gold -= cost;
+                    purchased = trackPurchase(cost);
                     this.data.abilities['super-hit'].powerLevel++;
-                    purchased = true;
                 }
             }
         }
 
         if (purchased) {
             this.uiManager.updateUI();
+            this.statsManager.updateStats(); 
             await this.saveGameState();
         } else {
             console.log(`Purchase failed for ${itemType}. Cost: ${cost}, Gold: ${this.data.gold}`);
@@ -276,12 +346,6 @@ class Game {
             await this.saveGameState();
         }
         this.uiManager.updateUI();
-    }
-
-    // Add method to handle unlock condition checks
-    checkUnlockConditions() {
-        console.log("Checking unlock conditions after data load");
-        checkUnlockConditions(this.data);
     }
 
     toggleEffects(level) {

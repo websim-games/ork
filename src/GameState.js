@@ -11,6 +11,9 @@ export class GameState {
             powerGloves: 0,
             martialArts: 0
         };
+        // Add new stats tracking
+        this.data.bossesKilled = 0;
+        this.data.totalGoldSpent = 0;
     }
 
     async loadGameState(uiManager) {
@@ -97,6 +100,12 @@ export class GameState {
                 martialArts: 0
             };
 
+            this.data.bossesKilled = stateToLoad.bossesKilled ?? 0;
+            this.data.totalGoldSpent = stateToLoad.totalGoldSpent ?? 0;
+
+            // Add boss state loading
+            this.data.currentBoss = stateToLoad.currentBoss || null;
+
         } else {
             console.log('No saved state found, initializing with defaults...');
             this.data.gold = 0;
@@ -130,6 +139,11 @@ export class GameState {
                 martialArts: 0
             };
 
+            this.data.bossesKilled = 0;
+            this.data.totalGoldSpent = 0;
+
+            this.data.currentBoss = null;
+
             const initialState = {
                 gold: this.data.gold,
                 damage: this.data.damage,
@@ -143,7 +157,10 @@ export class GameState {
                 effectsLevel: this.data.effectsLevel,
                 abilities: this.data.abilities,
                 monsters: this.data.monsters,
-                upgradeCounts: this.data.upgradeCounts
+                upgradeCounts: this.data.upgradeCounts,
+                bossesKilled: this.data.bossesKilled,
+                totalGoldSpent: this.data.totalGoldSpent,
+                currentBoss: this.data.currentBoss
             };
             initialState.saved_at = Date.now();
 
@@ -190,7 +207,10 @@ export class GameState {
             effectsLevel: this.data.effectsLevel,
             abilities: this.data.abilities,
             monsters: this.data.monsters,
-            upgradeCounts: this.data.upgradeCounts
+            upgradeCounts: this.data.upgradeCounts,
+            bossesKilled: this.data.bossesKilled,
+            totalGoldSpent: this.data.totalGoldSpent,
+            currentBoss: this.data.currentBoss
         };
 
         const activeBoostsObj = {};

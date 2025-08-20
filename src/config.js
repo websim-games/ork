@@ -4,6 +4,25 @@ export const config = {
   baseDamage: 1,
   orkMaxHealth: 25,
   
+  // Unlock conditions
+  unlocks: {
+    shop: {
+      requiredKills: 3
+    },
+    stats: {
+      requiredKills: 2
+    },
+    boosts: {
+      requiredGold: 10
+    },
+    abilities: {
+      requiredGold: 20
+    },
+    monsters: {
+      requiredBossKills: 3
+    }
+  },
+
   // Visual settings
   animations: {
     hit: {
@@ -21,6 +40,24 @@ export const config = {
       glowDuration: 100,
       emoji: '🥊',
       fontSize: '100px'
+    },
+    coins: {
+      initialDelay: 50,
+      dropDuration: 300,
+      bounceUpDuration: 550,
+      fadeOutDelay: 700,
+      removeDelay: 1550,
+      dropDistance: 20,
+      bounceHeight: 40,
+      iconSize: '2.25rem'
+    },
+    particles: {
+      count: 8,
+      minSize: 5,
+      maxSize: 15,
+      minDistance: 50,
+      maxDistance: 100,
+      duration: 500
     }
   },
 
@@ -40,7 +77,11 @@ export const config = {
       baseCost: 25,
       costMultiplier: 1.2,
       damage: 2,
-      unlockCondition: null
+      unlockCondition: {
+        type: 'upgradeCount',
+        upgrade: 'gloves',
+        count: 3
+      }
     },
     powerGloves: {
       name: "Power Gloves",
@@ -99,7 +140,7 @@ export const config = {
         baseChance: 2,
         costPerLevel: 50,
         increasePerLevel: 2,
-        maxLevel: null 
+        maxLevel: 30
       },
       powerUpgrade: {
         name: "Improve Super Hit Power",
@@ -125,6 +166,12 @@ export const config = {
         healthIncreasePerLevel: 25,
         goldIncreasePerLevel: 1,
         maxLevel: null
+      },
+      boss: {
+        healthMultiplier: 5,
+        goldMultiplier: 10,
+        frequency: 50, 
+        scaleMultiplier: 1.2
       }
     }
   },
@@ -137,6 +184,11 @@ export const config = {
     },
     defaultTheme: 'dark',
     defaultEffectsLevel: 'all',
+    healthBar: {
+      height: '15px',
+      minHeight: '4vmin',
+      borderRadius: '5px'
+    },
     shopTabs: [
       {id: 'upgrades', label: 'Upgrades'},
       {id: 'boosts', label: 'Boosts'},

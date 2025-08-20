@@ -14,6 +14,13 @@
 	--dark-bg: #1a1a1a;
 	--dark-text: #ffffff;
 	--dark-modal-bg: #2d2d2d;
+
+    --health-bar-height: 15px;
+    --health-bar-min-height: 4vmin;
+    --health-bar-radius: 5px;
+    --boss-scale: 1.2;
+    --super-hit-font-size: 100px;
+    --super-hit-duration: 0.8s;
 }
 
 [data-theme="light"] {
@@ -32,6 +39,14 @@
 	--bg-color: var(--dark-bg);
 	--text-color: var(--dark-text);
 	--modal-bg: var(--dark-modal-bg);
+}
+
+.tab-content.locked {
+    display: none !important;
+}
+
+[data-tab="boosts"] {
+    display: none;
 }
 
 body {
@@ -89,6 +104,21 @@ button:not(:disabled):active {
 	flex-wrap: wrap;
 }
 
+.top-bar-stat-icon {
+	--size: 2.25rem;
+	width: var(--size);
+	height: var(--size);
+	vertical-align: middle;
+}
+
+.top-bar-stat {
+	line-height: 1;
+	font-size: 2.25rem;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+
 .top-bar-buttons {
 	display: flex;
 	gap: 10px;
@@ -100,9 +130,32 @@ button:not(:disabled):active {
 	transition: background-color 0.3s;
 }
 
+.top-bar-btn[data-button="shop"] {
+    display: none;
+}
+
+.top-bar-btn[data-button="shop"].unlocked {
+    display: block;
+}
+
+.top-bar-btn[data-button="stats"] {
+    display: none;
+}
+
+.top-bar-btn[data-button="stats"].unlocked {
+    display: block;
+}
+
 .top-bar-btn:hover {
 	background-color: var(--secondary-color);
 	color: var(--text-color);
+}
+
+.top-bar-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    color: #666666;
+    opacity: 0.5;
 }
 
 .game-container {
@@ -150,13 +203,31 @@ button:not(:disabled):active {
 	transform: none;
 }
 
+.ork img.boss {
+    filter: hue-rotate(45deg) brightness(0.8) saturate(2);
+    transform: scale(var(--boss-scale, 1.2));
+}
+
+.ork img.boss:active {
+    transform: scale(calc(var(--boss-scale, 1.2) * 0.95));
+}
+
 .health-bar {
-	width: 100%;
-	height: min(15px, 4vmin);
+    width: 100%;
+    height: min(var(--health-bar-height, 15px), var(--health-bar-min-height, 4vmin));
+    background-color: #444;
+    border-radius: var(--health-bar-radius, 5px);
+    margin-top: 10px;
+    overflow: hidden;
+    border: 1px solid var(--primary-color);
+}
+
+.health-bar.boss {
+	border-color: #ff4444;
+}
+
+.health-bar.boss .health-fill {
 	background-color: #ff4444;
-	border-radius: 5px;
-	margin-top: 10px;
-	overflow: hidden;
 }
 
 .health-fill {
@@ -317,7 +388,6 @@ button:not(:disabled):active {
 	padding-top: 15px;
 }
 
-/* Only show upgrades when parent ability is owned */
 [data-super-hit-owned="true"] .ability-upgrades {
 	display: flex;
 }
@@ -364,18 +434,18 @@ button:not(:disabled):active {
 }
 
 .effects-btn {
-    border: 2px solid var(--primary-color);
-    transition: all 0.15s;
-    position: relative;
+	border: 2px solid var(--primary-color);
+	transition: all 0.15s;
+	position: relative;
 }
 
 .effects-btn:hover {
-    opacity: 0.85;
+	opacity: 0.85;
 }
 
 .effects-btn.active {
-    border-color: var(--accent-color);
-    transform: scale(1.05);
+	border-color: var(--accent-color);
+	transform: scale(1.05);
 }
 
 .stat-item h3 {
@@ -386,21 +456,6 @@ button:not(:disabled):active {
 	margin: 0;
 	color: var(--secondary-color);
 	font-size: 1.5rem;
-}
-
-.gold, .damage {
-	font-size: 1.4rem;
-}
-
-.damage.boosted {
-	color: var(--accent-color);
-	font-weight: bold;
-	animation: pulse 0.5s infinite alternate;
-}
-
-@keyframes pulse {
-	from { transform: scale(1); }
-	to { transform: scale(1.1); }
 }
 
 #stats-modal .stats-content {
@@ -435,42 +490,42 @@ button:not(:disabled):active {
 }
 
 .super-hit-glove {
-  position: fixed;
-  font-size: 100px;
-  bottom: -120px;
-  left: 50%;
-  transform: translateX(-50%);
-  pointer-events: none;
-  animation: glove-punch 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    position: fixed;
+    font-size: var(--super-hit-font-size, 100px);
+    bottom: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    animation: glove-punch var(--super-hit-duration, 0.8s) cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
 @keyframes glove-punch {
   0% {
-    bottom: -120px;
-    transform: translateX(-50%) rotate(0deg);
+	bottom: -120px;
+	transform: translateX(-50%) rotate(0deg);
   }
   50% {
-    bottom: 50%;
-    transform: translateX(-50%) rotate(-45deg);
+	bottom: 50%;
+	transform: translateX(-50%) rotate(-45deg);
   }
   100% {
-    bottom: -120px;
-    transform: translateX(-50%) rotate(0deg);
+	bottom: -120px;
+	transform: translateX(-50%) rotate(0deg);
   }
 }
 
 [data-unlock-condition] {
-    opacity: 0;
-    visibility: hidden;
-    max-height: 0;
-    overflow: hidden;
-    transition: all 0.3s ease-out;
+	opacity: 0;
+	visibility: hidden;
+	max-height: 0;
+	overflow: hidden;
+	transition: all 0.3s ease-out;
 }
 
 [data-unlock-condition].unlocked {
-    opacity: 1;
-    visibility: visible;
-    max-height: 500px; 
+	opacity: 1;
+	visibility: visible;
+	max-height: 500px; 
 }
 
 @media (max-width: 525px) {
@@ -495,4 +550,61 @@ button:not(:disabled):active {
 		width: 100%;
 		padding: 10px;
 	}
+}
+
+.health-labels {
+	display: flex;
+	justify-content: center;
+	gap: 1rem;
+	margin-bottom: 1rem;
+	flex-wrap: wrap;
+}
+
+.health-label {
+	background-color: var(--primary-color);
+	padding: 0.5rem 1rem;
+	border-radius: 4px;
+	font-size: 1.2rem;
+}
+
+.boss-label {
+	background-color: #ff4444;
+	animation: pulse 1s infinite alternate;
+	font-weight: bold;
+}
+
+.coin-container {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: 1000;
+}
+
+.floating-coin {
+	position: absolute;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	transition: transform 1s cubic-bezier(0.3, 1, 0.64, 1), opacity 0.3s ease-in;
+	transition-delay: 0s, 0.7s;
+}
+
+.floating-coin .coin-icon {
+	--size: 2.25rem;
+	width: var(--size);
+	height: var(--size);
+}
+
+.floating-coin .coin-amount {
+	color: var(--text-color);
+	font-weight: bold;
+	font-size: 2rem;
+}
+
+@keyframes pulse {
+	from { transform: scale(1); }
+	to { transform: scale(1.1); }
 }

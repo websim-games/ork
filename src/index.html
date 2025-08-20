@@ -14,7 +14,8 @@
 			"./ui/UIManager.js": "./ui/UIManager.js",
 			"./utils/formatUtils.js": "./utils/formatUtils.js",
 			"./utils/monsterUtils.js": "./utils/monsterUtils.js",
-			"./GameState.js": "./GameState.js"
+			"./GameState.js": "./GameState.js",
+			"./ui/SectionUnlockManager.js": "./ui/SectionUnlockManager.js"
 		}
 	}
 	</script>
@@ -22,12 +23,12 @@
 <body>
 	<div class="top-bar">
 		<div class="top-bar-stats">
-			<div class="gold">Gold: <span id="gold-amount">0</span></div>
-			<div class="damage">Damage: <span id="damage-amount">1</span></div>
+			<div class="top-bar-stat gold">Gold: <span id="gold-amount">0</span></div>
+			<div class="top-bar-stat damage">Damage: <span id="damage-amount">1</span></div>
 		</div>
 		<div class="top-bar-buttons">
-			<button class="top-bar-btn" id="stats-btn">Stats</button>
-			<button class="top-bar-btn" id="shop-btn">Shop</button>
+			<button class="top-bar-btn" id="stats-btn" data-button="stats">Stats</button>
+			<button class="top-bar-btn" id="shop-btn" data-button="shop">Shop</button>
 			<button class="top-bar-btn" id="settings-btn">Settings</button>
 		</div>
 	</div>
@@ -35,7 +36,7 @@
 	<div class="game-container">
 		<div class="ork-area">
 			<div class="ork" id="ork">
-				<img id="ork-image" src="https://websim.ai/a/8c1e2f62-b40b-4152-8fc9-cb503e78f677" alt="Ork" draggable="false">
+				<img id="ork-image" src="/ork.png" alt="Ork" draggable="false">
 			</div>
 			<div class="health-bar">
 				<div class="health-fill" id="health-fill"></div>
@@ -56,8 +57,8 @@
 			</div>
 			<div class="tabs">
 				<button class="content-btn tab-btn active" data-tab="upgrades">Upgrades</button>
-				<button class="content-btn tab-btn" data-tab="boosts">Boosts</button>
-				<button class="content-btn tab-btn" data-tab="abilities">Special Abilities</button>
+				<button class="content-btn tab-btn" data-tab="boosts" style="display: none;">Boosts</button>
+				<button class="content-btn tab-btn" data-tab="abilities" style="display: none;">Special Abilities</button>
 				<button class="content-btn tab-btn" data-tab="monsters">Monsters</button>
 			</div>
 			<div class="tab-content active" id="upgrades">
@@ -70,7 +71,7 @@
 						<button class="content-btn buy-btn" data-item="gloves">Buy (10 gold)</button>
 					</div>
 				</div>
-				<div class="content-item shop-item">
+				<div class="content-item shop-item" data-unlock-condition="upgradeCount-3" data-upgrade="gloves">
 					<div class="shop-item-content">
 						<div class="shop-item-info">
 							<h3>Training</h3>
